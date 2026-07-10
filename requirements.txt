@@ -1,0 +1,17 @@
+# Data pipeline
+nfl_data_py>=0.3.2
+pandas>=2.0
+pyarrow
+
+# Fine-tuning stack (matches beskar001: CUDA 12.8 / Blackwell)
+# Install torch separately first:
+#   pip install torch --index-url https://download.pytorch.org/whl/cu128
+transformers>=4.48
+datasets>=2.20
+peft>=0.13
+bitsandbytes>=0.45
+accelerate>=1.0
+trl>=0.12
+
+# Inference / draft assistant
+rich
