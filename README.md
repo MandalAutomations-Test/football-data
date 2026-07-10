@@ -52,6 +52,21 @@ python src/draft_assistant.py
 
 Draft state is injected into the system prompt each turn so the model won't recommend unavailable players.
 
+## Running on Beskar-Core
+
+`orchestra.yml` runs the full pipeline (fetch → dataset → QLoRA train → verify) as a
+Beskar-Core GPU job. The trained adapter and `train.jsonl` are written under
+`$OUTPUT_DIR` and uploaded as the job artifact; locally (`OUTPUT_DIR` unset)
+checkpoints land in `checkpoints/` as before.
+
+Knobs in the `env:` block:
+
+- `SEASONS` — seasons passed to `fetch_data.py` (default `2022 2023 2024 2025`)
+- `BASE_MODEL` — HF model id (default `google/gemma-3-1b-it`; Gemma is gated, so the
+  worker needs `HF_TOKEN` — use e.g. `Qwen/Qwen2.5-1.5B-Instruct` if no token)
+- `EPOCHS` / `MAX_SEQ_LEN` — sized small (`1` / `512`) to finish in one GPU session;
+  raise to `3` / `1024` and `google/gemma-3-4b-it` for a real run
+
 ## VRAM budget (5060 Ti, 16GB)
 
 Gemma-3-4B in NF4 ≈ 3GB, LoRA (r=16, attn+MLP) + paged 8-bit AdamW + activations with gradient checkpointing keeps training under ~10GB. Drop `--base google/gemma-3-1b-it` or reduce `--max-seq-len` if you hit OOM.

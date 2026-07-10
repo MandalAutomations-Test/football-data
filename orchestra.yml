@@ -1,0 +1,50 @@
+name: fantasy-llm
+
+env:
+  OUTPUT_DIR: /scratch/workspace/artifacts
+  # Small defaults so the whole pipeline (fetch -> dataset -> train) finishes
+  # in a single GPU session. For a real run raise EPOCHS to "3",
+  # MAX_SEQ_LEN to "1024", and BASE_MODEL to "google/gemma-3-4b-it".
+  SEASONS: "2022 2023 2024 2025"
+  # Gemma is gated on Hugging Face: the worker environment must provide a
+  # valid HF_TOKEN. If no token is available, switch BASE_MODEL to a
+  # non-gated model such as "Qwen/Qwen2.5-1.5B-Instruct" (same LoRA
+  # target-module names, so train.py works unchanged).
+  BASE_MODEL: "google/gemma-3-1b-it"
+  EPOCHS: "1"
+  MAX_SEQ_LEN: "512"
+
+steps:
+  # torch is deliberately not in requirements.txt (see its header comment);
+  # PIP_EXTRA_INDEX_URL on the worker resolves it to CUDA 12.8 wheels.
+  # The requirements re-install is a fast no-op on the worker (its bootstrap
+  # already ran it) but keeps the pipeline self-sufficient elsewhere.
+  - name: Install dependencies
+    run: |
+      pip install --no-cache-dir torch
+      pip install --no-cache-dir -r requirements.txt
+
+  - name: Show environment
+    run: |
+      python --version
+      pip list 2>/dev/null | grep -iE '^(torch|transformers|trl|peft|bitsandbytes|accelerate|nfl.data.py) ' || true
+      nvidia-smi || echo "nvidia-smi unavailable"
+      echo "seasons=$SEASONS base=$BASE_MODEL epochs=$EPOCHS max_seq_len=$MAX_SEQ_LEN out=$OUTPUT_DIR"
+
+  - name: Fetch nflverse data
+    run: python src/fetch_data.py --seasons $SEASONS
+
+  - name: Build instruction dataset
+    run: |
+      python src/build_dataset.py
+      cp data/train.jsonl "$OUTPUT_DIR/train.jsonl"
+
+  - name: Train QLoRA adapter
+    run: python src/train.py
+
+  - name: Verify artifacts
+    run: |
+      test -f "$OUTPUT_DIR/train.jsonl"
+      test -f "$OUTPUT_DIR/fantasy-draft-lora/final/adapter_config.json"
+      test -f "$OUTPUT_DIR/fantasy-draft-lora/final/adapter_model.safetensors"
+      echo "artifacts present in $OUTPUT_DIR"

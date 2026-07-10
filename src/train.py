@@ -12,6 +12,7 @@ Run:
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 
 import torch
@@ -22,15 +23,17 @@ from trl import SFTConfig, SFTTrainer
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data" / "train.jsonl"
-OUT = ROOT / "checkpoints" / "fantasy-draft-lora"
+# On Beskar-Core, OUTPUT_DIR points at the artifact directory; locally it is
+# unset and checkpoints land in the repo as before.
+OUT = Path(os.environ.get("OUTPUT_DIR", ROOT / "checkpoints")) / "fantasy-draft-lora"
 
 
 def main() -> None:
     p = argparse.ArgumentParser()
-    p.add_argument("--base", default="google/gemma-3-4b-it")
-    p.add_argument("--epochs", type=int, default=3)
+    p.add_argument("--base", default=os.environ.get("BASE_MODEL", "google/gemma-3-4b-it"))
+    p.add_argument("--epochs", type=int, default=int(os.environ.get("EPOCHS", "3")))
     p.add_argument("--lr", type=float, default=2e-4)
-    p.add_argument("--max-seq-len", type=int, default=1024)
+    p.add_argument("--max-seq-len", type=int, default=int(os.environ.get("MAX_SEQ_LEN", "1024")))
     args = p.parse_args()
 
     bnb = BitsAndBytesConfig(
