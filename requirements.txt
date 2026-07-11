@@ -1,5 +1,5 @@
 # Data pipeline
-nfl_data_py>=0.3.2
+nflreadpy>=0.1.5
 pandas>=2.0
 pyarrow
 
